@@ -123,13 +123,10 @@ class GeoPost{
 
     return $wpdb->prepare(
     "SELECT DISTINCT
-      {$wpdb->posts}.*, lat.meta_value AS latitude, lng.meta_value AS longitude, ad.meta_value AS address,
+      {$wpdb->posts}.*, lat.meta_value AS latitude, lng.meta_value AS longitude,
       ( 3963.1676 * acos( cos( radians(%F) ) * cos( radians( lat.meta_value ) ) * cos( radians( lng.meta_value ) - radians(%F) ) + sin( radians(%F) ) * sin( radians( lat.meta_value ) ) ) ) AS distance
 
       FROM {$wpdb->posts}
-        INNER JOIN
-          ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'address_group' ) as ad
-          ON {$wpdb->posts}.ID = ad.post_id
         INNER JOIN
           ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'latitude' ) as lat
           ON {$wpdb->posts}.ID = lat.post_id
@@ -158,13 +155,10 @@ class GeoPost{
 
     return $wpdb->prepare(
       "SELECT DISTINCT
-        {$wpdb->posts}.*, lat.meta_value AS latitude, lng.meta_value AS longitude, ad.meta_value AS address,
+        {$wpdb->posts}.*, lat.meta_value AS latitude, lng.meta_value AS longitude,
         ( 3963.1676 * acos( cos( radians(%F) ) * cos( radians( lat.meta_value ) ) * cos( radians( lng.meta_value ) - radians(%F) ) + sin( radians(%F) ) * sin( radians( lat.meta_value ) ) ) ) AS distance
 
       FROM {$wpdb->posts}
-        INNER JOIN
-          ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'address_group' ) as ad
-          ON {$wpdb->posts}.ID = ad.post_id
         INNER JOIN
           ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'latitude' ) as lat
           ON {$wpdb->posts}.ID = lat.post_id
@@ -252,22 +246,19 @@ class GeoPost{
   public static function intercept_post_save( $post_id ) {
     if ( false !== wp_is_post_revision($post_id) || false !== wp_is_post_autosave($post_id) ) return;
 
-    if ( !isset($_POST) || !isset($_POST['post_type']) || ($_POST['post_type'] !== 'geo-location') )
-      return;
+    if ( !isset($_POST['post_type']) || ($_POST['post_type'] !== 'geo-location') ) return;
 
-    if ( !isset($_POST['_post_meta']['address_group']) ) return;
+    if ( !isset($_POST['_post_meta']['street'], $_POST['_post_meta']['city'], $_POST['_post_meta']['state']) ) return;
 
     static $has_retrieved = false;
     if ( $has_retrieved ) return;
 
     // Retrieve address
-    $group = $_POST['_post_meta']['address_group'];
-
     $address = implode(',',array(
-      $group['street'],
-      $group['city'],
-      $group['state'],
-      $group['zip']
+      $_POST['_post_meta']['street'],
+      $_POST['_post_meta']['city'],
+      $_POST['_post_meta']['state'],
+      isset($_POST['_post_meta']['zip']) ? $_POST['_post_meta']['zip'] : '',
     ));
 
     // GET Coordinates from Google GeoCode

@@ -28,7 +28,12 @@ class GeoPostMenu {
   public static function manage_posts_custom_column($column_name, $post_id) {
     switch($column_name) {
       case 'address':
-        $address = get_post_meta($post_id, 'address_group', true);
+        $address = array(
+          'street' => get_post_meta($post_id, 'street', true),
+          'city' => get_post_meta($post_id, 'city', true),
+          'state' => get_post_meta($post_id, 'state', true),
+          'zip' => get_post_meta($post_id, 'zip', true),
+        );
 
         if ( !($address['street'] && $address['city'] && $address['state'] ) ) {
           echo "No address available";

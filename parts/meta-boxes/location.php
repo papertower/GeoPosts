@@ -8,7 +8,6 @@
 
 piklist('field', array(
   'type'    => 'group',
-  'field'   => 'address_group',
   'label'   => 'Address',
   'list'    => false,
   'fields'  => array(

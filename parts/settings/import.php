@@ -24,18 +24,20 @@ echo <<<HTML
   .bs-callout p {
     font-size: 14px;
     margin-top: 0;
-    margin-bottom: 0;
+    margin-bottom: 20px;
   }
 </style>
 <div class="bs-callout">
   <h4>Note:</h4>
   <p>Importing can take a while, especially if coordinates are being retrieved and the list is long. Also <strong>be careful</strong> of the google geocode usage limit (is 2000/day at this point).</p>
+  <p>The best way to import is to first export and then reuse the structure provided.</p>
+  <p>The ID column is a special column. If omitted, it will be assumed that all posts are new. If included, the post with the provided ID will be updated. It is acceptable for some posts to have an ID and not others in the same file.</p>
 </div>
 HTML;
 
 piklist('field', array(
   'type'    => 'file',
-  'field'   => 'import-file',
+  'field'   => 'import_file',
   'label'   => 'File',
   'options' => array(
     'basic'   => true
@@ -45,26 +47,13 @@ piklist('field', array(
 piklist('field', array(
   'help'    => 'When to retrieve the latitude and longitude coordintes for the posts.',
   'type'    => 'radio',
-  'field'   => 'retrieve-coordinates',
+  'field'   => 'retrieve_coordinates',
   'label'   => 'Retrieve Coordinates',
   'value'   => 'omitted',
   'choices' => array(
     'never'   => 'Do not retrieve any',
     'omitted' => 'Only if omitted',
     'always'  => 'For all of them'
-  )
-));
-
-piklist('field', array(
-  'help'    => 'Whether or not to insert the imported content to the existing data or replace the old data.',
-  'type'    => 'radio',
-  'field'   => 'import-type',
-  'label'   => 'Import Type',
-  'list'    => false,
-  'value'   => 'replace',
-  'choices' => array(
-    'replace'   => 'Replace',
-    'insert'    => 'Insert'
   )
 ));
 

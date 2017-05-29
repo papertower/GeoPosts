@@ -6,6 +6,13 @@
  * Flow: Settings Workflow
 */
 
+echo '<p id="exportError" style="display: none;
+    color: red;
+    border: solid;
+    border-width: 2px;
+    padding: 1em;
+    font-size: 1.2em;"></p>';
+
 piklist('field', array(
   'type'    => 'select',
   'field'   => 'include-custom-meta',
@@ -50,7 +57,11 @@ piklist('field', array(
       };
 
       $.post(ajaxurl, options, function(data) {
-        download(data, 'GeoPosts.csv', 'text/csv');
+        if ( typeof data === 'object' ) {
+          $('#exportError').text(data.data).fadeIn();
+        } else {
+          download(data, 'GeoPosts.csv', 'text/csv');
+        }
       })
     });
   })
