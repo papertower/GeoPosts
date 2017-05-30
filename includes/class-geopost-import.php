@@ -62,8 +62,11 @@ class GeoPostImport {
     // We're done with the file, let's delete it
     wp_delete_attachment($file_id, true);
 
+    // Begin importing data
+    self::start_transaction();
     $count = self::import_post_from_data($contents, $header, $new);
 
+    // Finalize or rollback transaction
     if ( is_wp_error($count) ) {
       self::finalize_queries($count);
     } else {
@@ -177,6 +180,13 @@ class GeoPostImport {
     }
 
     return $count;
+  }
+
+  private static function start_transaction() {
+    global $wpdb;
+
+    $wpdb->query('SET autocommit=0');
+    $wpdb->query('START TRANSACTION');
   }
 
   private static function finalize_queries($error = false) {
