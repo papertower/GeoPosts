@@ -76,8 +76,8 @@ class GeoPostImport {
 
   private static function import_post_from_data($contents, $header, $options) {
     // Requirements
-    $post_keys    = apply_filters('geopost-import-required-posts', array('post_name', 'post_title', 'post_status'));
-    $meta_keys    = apply_filters('geopost-import-required-meta', array('street', 'city', 'state', 'zip'));
+    $post_keys    = apply_filters('geopost-import-required-post-keys', array('post_name', 'post_title', 'post_status'));
+    $meta_keys    = apply_filters('geopost-import-required-meta-keys', array('street', 'city', 'state', 'zip'));
 
     // Check Required Keys
     $missing_keys = array_diff($post_keys, $header);
@@ -88,8 +88,8 @@ class GeoPostImport {
     }
 
     // Gather optional keys
-    $optional_meta = apply_filters('geopost-import-optional-meta', array());
-    $optional_post = apply_filters('geopost-import-optional-post-columns', array('ID', 'post_author', 'post_date', 'post_date_gmt'));
+    $optional_meta = apply_filters('geopost-import-optional-meta-keys', array());
+    $optional_post = apply_filters('geopost-import-optional-post-keys', array('ID', 'post_author', 'post_date', 'post_date_gmt'));
 
     // Apply optional keys
     $post_keys = array_merge($post_keys, $optional_post);
