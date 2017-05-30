@@ -68,10 +68,11 @@ class GeoPostImport {
 
     // Finalize or rollback transaction
     if ( is_wp_error($count) ) {
-      self::finalize_queries($count);
+      self::set_notification('error', "Error: {$count->get_error_message()}");
+      self::rollback_transaction();
     } else {
-      self::finalize_queries();
       self::set_notification('updated', "$count Posts successfully imported");
+      self::commit_transaction();
     }
 
     return $old;
@@ -86,8 +87,7 @@ class GeoPostImport {
     $missing_keys = array_diff($post_keys, $header);
     $missing_keys = array_merge($missing_keys, array_diff($meta_keys, $header));
     if ( !empty($missing_keys) ) {
-      self::set_notification('error', 'Error: The following required columns were missing: ' . explode(', ', $missing_keys));
-      return $old;
+      return new WP_Error ('import_error', 'The following required columns were missing: ' . explode(', ', $missing_keys));
     }
 
     // Gather optional keys
@@ -189,15 +189,25 @@ class GeoPostImport {
     $wpdb->query('START TRANSACTION');
   }
 
-  private static function finalize_queries($error = false) {
+  private static function rollback_transaction() {
     global $wpdb;
 
-    // Rollback or Finalize
-    if ( is_wp_error($error) ) {
-      $wpdb->query('ROLLBACK;');
-      self::set_notification('error', $error);
-    } else
-      $wpdb->query('COMMIT;');
+    // Rollback
+    $wpdb->query('ROLLBACK;');
+
+    //Reset autocommit
+    $wpdb->query('SET autocommit = 1;');
+
+    // Make sure to turn counting back on!
+    wp_defer_term_counting(false);
+    wp_defer_comment_counting(false);
+  }
+
+  private static function commit_transaction() {
+    global $wpdb;
+
+    // Commit
+    $wpdb->query('COMMIT;');
 
     //Reset autocommit
     $wpdb->query('SET autocommit = 1;');
