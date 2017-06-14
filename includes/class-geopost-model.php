@@ -13,14 +13,16 @@ class GeoPostModel {
     $slug   = ($has_settings && isset($settings['slug'])) ? $settings['slug'] : 'geopost';
 
     $post_types[GeoPost::POST_TYPE] = apply_filters('geopost_post_data', array(
-      'labels'          => piklist('post_type_labels', $title),
-      'title'           => $title,
-      'supports'        => array( 'title' ),
-      'public'          => true,
-      'has_archive'     => true,
-      'rewrite'         => array('slug' => $slug),
-      'capability_type' => 'post',
-      'post_states'     => false
+      'labels'                => piklist('post_type_labels', $title),
+      'title'                 => $title,
+      'supports'              => array( 'title' ),
+      'public'                => true,
+      'has_archive'           => true,
+      'rewrite'               => array('slug' => $slug),
+      'capability_type'       => 'post',
+      'post_states'           => false,
+      'show_in_rest'          => true,
+      'rest_controller_class' => 'GeoPostRestController'
     ));
 
     return $post_types;
