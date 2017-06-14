@@ -11,109 +11,7 @@ class GeoPost{
     $plugin_file,
     $plugin_path;
 
-
-  /**
-  * Retrieve the local posts
-  * @param  string  $address
-  * @param  float   $distance   in miles
-  * @return array   containing objects
-  */
-  public static function get_posts(array $args) {
-    global $wpdb;
-
-    extract(wp_parse_args($args, array(
-      'type'      => 'radial',
-      'distance'  => false,
-      'address'   => false,
-      'bounds'    => false,
-      'latitude'  => false,
-      'longitude' => false,
-      'tax_query' => false,
-      'meta_query'=> false,
-      'post__in'  => false
-    )));
-
-    // Check for required arguments
-    $has_coordinates = ( $latitude && $longitude );
-    $has_location = ( $address || $has_coordinates );
-
-    if ( !($has_coordinates || $has_location) )
-      return new WP_Error('Error', __('Coordinates or address required'));
-
-    // Retrieve coordinates from address
-    if ( $has_coordinates ) {
-      $source = new stdclass;
-      $source->lat = $latitude;
-      $source->lng = $longitude;
-    } else {
-      $source = self::get_coordinates($address);
-
-      if ( is_wp_error($source) )
-        return $source;
-    }
-
-    // Check if tax_query is included
-    if ( $tax_query ) {
-      $tax_query = new WP_Tax_Query($tax_query);
-      $tax_sql = $tax_query->get_sql( $wpdb->posts, 'ID' );
-      if ( $tax_sql['join'] === '' )
-        return new WP_Error('Error', __('Invalid tax_query parameters'));
-    } else {
-      // Fill as empty
-      $tax_sql['join'] = $tax_sql['where'] = '';
-    }
-
-    if ( $meta_query ) {
-      $meta_query = new WP_Meta_Query($meta_query);
-      $meta_sql = $meta_query->get_sql('post', $wpdb->posts, 'ID');
-      if ( '' === $meta_sql['join'] ) {
-        return new WP_Error('meta_query_eror', __('Invalid meta_query parameters'));
-      }
-    } else {
-      $meta_sql['join'] = $meta_sql['where'] = '';
-    }
-
-    // Additional where clause
-    $where = '';
-    if ( $post__in ) {
-      $post__in = implode(',', array_map('absint', $post__in));
-      $where .= " AND {$wpdb->posts}.ID IN ($post__in)";
-    }
-
-    // Get SQL based on type
-    switch($type) {
-      case 'radial':
-        if ( !$distance )
-          return new WP_Error('Error', __('Must provide distance'));
-
-        $sql = self::get_radial_query($source, $distance, $where, $tax_sql, $meta_sql);
-        break;
-
-      case 'boundary':
-        if ( !$bounds )
-          return new WP_Error('Error', __('Must provide boundries'));
-
-        $sql = self::get_bounds_query($source, $bounds, $where, $tax_sql, $meta_sql);
-        break;
-
-      default:
-        return new WP_Error('Error', __("Invalid query type: $type"));
-    }
-
-    // Query Location
-    $results = $wpdb->get_results($sql);
-
-    if ( null === $results )
-      return new WP_Error('GeoPost::local_posts', __('SQL returned error'), $wpdb->last_error);
-
-    foreach($results as &$result) {
-      $result->address = maybe_unserialize($result->address);
-    }
-
-    return $results;
-  }
-
-  private static function get_bounds_query($source, $bounds, $where, $tax_sql, $meta_sql) {
+  private static function get_bounds_query($source, $bounds) {
     global $wpdb;
 
     $min_lat = $bounds['southwest']['latitude'];
@@ -121,7 +19,7 @@ class GeoPost{
     $min_lng = $bounds['southwest']['longitude'];
     $max_lng = $bounds['northeast']['longitude'];
 
-    return $wpdb->prepare(
+    return $wpdb->get_results($wpdb->prepare(
     "SELECT DISTINCT
       {$wpdb->posts}.*, lat.meta_value AS latitude, lng.meta_value AS longitude,
       ( 3963.1676 * acos( cos( radians(%F) ) * cos( radians( lat.meta_value ) ) * cos( radians( lng.meta_value ) - radians(%F) ) + sin( radians(%F) ) * sin( radians( lat.meta_value ) ) ) ) AS distance
@@ -133,29 +31,23 @@ class GeoPost{
         INNER JOIN
           ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'longitude' ) as lng
           ON {$wpdb->posts}.ID = lng.post_id
-        {$meta_sql['join']}
-        {$tax_sql['join']}
 
       WHERE {$wpdb->posts}.post_type = %s AND
-        {$wpdb->posts}.post_status = 'publish' AND
         lat.meta_value >= %F AND
         lat.meta_value <= %F AND
         lng.meta_value >= %F AND
         lng.meta_value <= %F
-        {$where}
-        {$meta_sql['where']}
-        {$tax_sql['where']}
 
       ORDER BY distance;",
-    $source->lat, $source->lng, $source->lat, self::POST_TYPE, $min_lat, $max_lat, $min_lng, $max_lng);
+    $source->lat, $source->lng, $source->lat, self::POST_TYPE, $min_lat, $max_lat, $min_lng, $max_lng), 'OBJECT_K');
   }
 
-  private static function get_radial_query($source, $distance, $where, $tax_sql, $meta_sql) {
+  private static function get_radial_query($source, $distance) {
     global $wpdb;
 
-    return $wpdb->prepare(
+    return $wpdb->get_results($wpdb->prepare(
       "SELECT DISTINCT
-        {$wpdb->posts}.*, lat.meta_value AS latitude, lng.meta_value AS longitude,
+        {$wpdb->posts}.ID, lat.meta_value AS latitude, lng.meta_value AS longitude,
         ( 3963.1676 * acos( cos( radians(%F) ) * cos( radians( lat.meta_value ) ) * cos( radians( lng.meta_value ) - radians(%F) ) + sin( radians(%F) ) * sin( radians( lat.meta_value ) ) ) ) AS distance
 
       FROM {$wpdb->posts}
@@ -165,19 +57,86 @@ class GeoPost{
         INNER JOIN
           ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'longitude' ) as lng
           ON {$wpdb->posts}.ID = lng.post_id
-        {$meta_sql['join']}
-        {$tax_sql['join']}
 
-      WHERE {$wpdb->posts}.post_type = %s AND
-        {$wpdb->posts}.post_status = 'publish'
-        {$where}
-        {$meta_sql['where']}
-        {$tax_sql['where']}
+      WHERE {$wpdb->posts}.post_type = %s
 
       HAVING distance <= %F
 
       ORDER BY distance;",
-    $source->lat, $source->lng, $source->lat, self::POST_TYPE, $distance);
+    $source->lat, $source->lng, $source->lat, self::POST_TYPE, $distance), 'OBJECT_K');
+  }
+
+  /**
+   * Uses the GeoPost query vars to limit the query within a radial or rectangular area
+   * @param  WP_Query $query
+   */
+  public static function pre_get_posts($query) {
+    if ( self::POST_TYPE !== $query->get('post_type') || !isset($query->query_vars['location']) ) return;
+
+    // Get primary location cordinates
+    $primary_location = $query->query_vars['location'];
+    if ( is_string($primary_location) ) {
+      // Address provided
+      $primary_location = self::get_coordinates($primary_location);
+      if ( is_wp_error($primary_location) ) return;
+
+    } else if ( is_array($primary_location) && isset($primary_location['latitude'], $primary_location['longitude']) ) {
+      // Coordinates provided
+      $primary_location = (object) array(
+        'lat' => $primary_location['latitude'],
+        'lng' => $primary_location['longitude']
+      );
+
+    } else {
+      trigger_error("Invalid primary_location in GeoPost query: {$query->query_vars['primary_location']}", E_USER_ERROR);
+    }
+
+    if ( isset($query->query_vars['distance']) ) {
+      // Radial Query
+      $posts_to_include = self::get_radial_query($primary_location, $query->query_vars['distance']);
+
+    } else if ( isset($query->query_vars['bounds']) ) {
+      // Bounds Query
+      $posts_to_include = self::get_bounds_query($primary_location, $query->query_vars['bounds']);
+
+    } else {
+      return;
+    }
+
+    if ( is_array($posts_to_include) ) {
+      // Limit the final query to the ids of the retrieved posts
+      $posts_in = $query->get('post__in');
+      $posts_in = empty($posts_in) ? array_keys($posts_to_include) : array_intersect($posts_in, array_keys($posts_to_include));
+      $query->set('post__in', empty($posts_in) ? array(-1) : $posts_in);
+
+      // Pass the results to the query to be later applied to the results
+      $query->set('geoposts', $posts_to_include);
+
+    } else {
+      // SQL Error occurred
+      trigger_error("There was a SQL error returned in the GeoPost query: {$posts_to_include}");
+    }
+  }
+
+  /**
+   * Adds the latitude, longitude, and distance data to GeoPost query results
+   * @param  array    $posts
+   * @param  WP_Query $query
+   * @return array            collection of posts with data added
+   */
+  public static function the_posts($posts, $query) {
+    $geoposts = $query->get('geoposts');
+    if ( empty($geoposts) ) return $posts;
+
+    foreach($posts as &$post) {
+      if ( isset($geoposts[$post->ID]) ) {
+        $post->latitude   = $geoposts[$post->ID]->latitude;
+        $post->longitude  = $geoposts[$post->ID]->longitude;
+        $post->distance   = $geoposts[$post->ID]->distance;
+      }
+    }
+
+    return $posts;
   }
 
   public static function load($plugin_file) {
@@ -186,11 +145,33 @@ class GeoPost{
 
     self::autoload_classes();
 
+    // Extend posts queries to support geographical parameters
+    add_action('pre_get_posts', array(__CLASS__, 'pre_get_posts'));
+    add_filter('the_posts', array(__CLASS__, 'the_posts'), 10, 2);
+
     // Retrieve coordinates on post save/update
     add_action('save_post', array(__CLASS__, 'intercept_post_save'));
 
     // Display admin notices if any
     add_action('admin_head-post.php', array(__CLASS__, 'check_admin_notice'));
+
+    // REMOVE ME
+    // add_action('init', function() {
+    //   $posts = get_posts(array(
+    //     'post_type'        => self::POST_TYPE,
+    //     'numberposts'      => 100,
+    //     'suppress_filters' => false,
+    //     'primary_location' => array(
+    //       'latitude' => 33.1627602,
+    //       'longitude' => -117.3491225,
+    //     ),
+    //     'bounds' => array(
+    //       'northeast' => array('latitude' => 33.166813, 'longitude' => -117.344699),
+    //       'southwest' => array('latitude' => 33.164322, 'longitude' => -117.348112),
+    //     )
+    //   ));
+    //   return $posts;
+    // });
   }
 
   public static function autoload_classes() {
@@ -216,7 +197,7 @@ class GeoPost{
     $settings = self::get_settings();
     $address = urlencode($address);
 
-    if ( false !== $settings && $settings['use-key'] ) {
+    if ( !empty($settings['use-key']) ) {
       if ( empty($settings['geocoding_api_key']) )
         return new WP_Error('Error', __('Failed to retrieve api key'));
 
@@ -282,5 +263,3 @@ class GeoPost{
     return self::$_settings;
   }
 }
-
-?>
