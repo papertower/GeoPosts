@@ -154,24 +154,6 @@ class GeoPost{
 
     // Display admin notices if any
     add_action('admin_head-post.php', array(__CLASS__, 'check_admin_notice'));
-
-    // REMOVE ME
-    // add_action('init', function() {
-    //   $posts = get_posts(array(
-    //     'post_type'        => self::POST_TYPE,
-    //     'numberposts'      => 100,
-    //     'suppress_filters' => false,
-    //     'primary_location' => array(
-    //       'latitude' => 33.1627602,
-    //       'longitude' => -117.3491225,
-    //     ),
-    //     'bounds' => array(
-    //       'northeast' => array('latitude' => 33.166813, 'longitude' => -117.344699),
-    //       'southwest' => array('latitude' => 33.164322, 'longitude' => -117.348112),
-    //     )
-    //   ));
-    //   return $posts;
-    // });
   }
 
   public static function autoload_classes() {
