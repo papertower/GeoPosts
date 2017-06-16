@@ -49,7 +49,7 @@ class GeoPostRestController extends WP_REST_Posts_Controller {
       );
     }
 
-    return $vars;
+    return apply_filters('geopost_rest_query_vars', $vars, $request);
   }
 
   public function prepare_item_for_database($request) {
