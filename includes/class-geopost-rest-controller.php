@@ -13,9 +13,21 @@ class GeoPostRestController extends WP_REST_Posts_Controller {
       if ( !isset($post['longitude']) ) {
         $post['longitude'] = (float) get_post_meta($post['id'], 'longitude', true);
       }
+
+      $post['address'] = array(
+        'street' => get_post_meta($post['id'], 'street', true),
+        'city'   => get_post_meta($post['id'], 'city', true),
+        'state'  => get_post_meta($post['id'], 'state', true),
+        'zip'    => get_post_meta($post['id'], 'zip', true),
+      );
+
+      $post['address']['full'] = $post['address']['street'];
+      if ( $post['address']['city'] ) $post['address']['full'] .= ", {$post['address']['city']}";
+      if ( $post['address']['state'] ) $post['address']['full'] .= " {$post['address']['state']}";
+      if ( $post['address']['zip'] ) $post['address']['full'] .= " {$post['address']['zip']}";
     }
 
-    return $response;
+    return apply_filters('geopost_rest_get_items_response', $response, $request);
   }
 
   public function rest_query($vars, $request) {
@@ -50,7 +62,7 @@ class GeoPostRestController extends WP_REST_Posts_Controller {
     if ( !empty($request['latitude']) ) {
       $post['meta_input']['latitude'] = $request['latitude'];
     }
-    
+
     if ( !empty($request['longitude']) ) {
       $post['meta_input']['longitude'] = $request['longitude'];
     }
