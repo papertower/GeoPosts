@@ -179,7 +179,13 @@ class GeoPost{
     $settings = self::get_settings();
     $address = urlencode($address);
 
-    if ( !empty($settings['use-key']) ) {
+    if ( empty($settings['use-key']) ) {
+      $use_key = false;
+    } else {
+      $use_key = is_array($settings['use-key']) ? $settings['use-key'][0] : $settings['use-key'];
+    }
+
+    if ( $use_key ) {
       if ( empty($settings['geocoding_api_key']) )
         return new WP_Error('Error', __('Failed to retrieve api key'));
 
