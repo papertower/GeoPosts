@@ -32,15 +32,17 @@ class GeoPostExport {
 
     // Define and filter post keys
     $keys = array('ID', 'post_name', 'post_author', 'post_title', 'post_date', 'post_date_gmt', 'post_status');
-    $keys = apply_filters('geopost-export-posts', $keys);
+    $keys = apply_filters('geopost_export_post_keys', $keys);
 
     // Define and filter meta keys
     $meta_keys = array('latitude', 'longitude', 'street', 'city', 'state', 'zip');
-    $meta_keys = ( $all_meta ) ? $meta_keys = apply_filters('geopost-export-meta', $meta_keys) : $meta_keys;
+    $meta_keys = ( $all_meta ) ? $meta_keys = apply_filters('geopost_export_meta_keys', $meta_keys) : $meta_keys;
+
+    $extra_keys = apply_filters('geopost_export_extra_keys', array());
 
     // Optionally append header
     if ( $add_header ) {
-      if ( !fputcsv($out, array_merge($keys, $meta_keys)) ) {
+      if ( !fputcsv($out, array_merge($keys, $meta_keys, $extra_keys)) ) {
         wp_send_json_error('Error: Failed to add the header. This probably means invalid meta keys were provided. Please notify the theme developer.');
       }
     }
@@ -50,8 +52,9 @@ class GeoPostExport {
       $line = array();
 
       // Append post sections
-      foreach($keys as $index => $key)
-        $line[] = $post->$key;
+      foreach($keys as $index => $key) {
+        $line[] = apply_filters('geopost_export_post_value', $post->$key, $key);
+      }
 
       // Retrieve post meta
       $meta = get_post_custom($post->ID);
@@ -59,10 +62,17 @@ class GeoPostExport {
       // Append selected meta
       foreach($meta_keys as $index => $key) {
         if ( isset($meta[$key][1]) ) {
-          $line[] = serialize($meta[$key]);
+          $value = serialize($meta[$key]);
         } else {
-          $line[] = $meta[$key][0];
+          $value = $meta[$key][0];
         }
+
+        $line[] =  apply_filters('geopost_export_meta_value', $value, $key, $post);
+      }
+
+      // Append extra keys
+      foreach($extra_keys as $key) {
+        $line[] = apply_filters('geopost_export_extra_value', '', $key, $post);
       }
 
       // Write to file
