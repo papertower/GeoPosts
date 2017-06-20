@@ -82,10 +82,10 @@ class GeoPostImport {
     // Requirements
     $post_keys    = apply_filters('geopost_import_required_post_keys', array('post_name', 'post_title', 'post_status'));
     $meta_keys    = apply_filters('geopost_import_required_meta_keys', array('street', 'city', 'state', 'zip'));
+    $extra_keys   = apply_filters('geopost_import_required_extra_keys', array());
 
     // Check Required Keys
-    $missing_keys = array_diff($post_keys, $header);
-    $missing_keys = array_merge($missing_keys, array_diff($meta_keys, $header));
+    $missing_keys = array_diff(array_merge($post_keys, $meta_keys, $extra_keys), $header);
     if ( !empty($missing_keys) ) {
       return new WP_Error ('import_error', 'The following required columns were missing: ' . explode(', ', $missing_keys));
     }
@@ -93,16 +93,15 @@ class GeoPostImport {
     // Gather optional keys
     $optional_meta = apply_filters('geopost_import_optional_meta_keys', array());
     $optional_post = apply_filters('geopost_import_optional_post_keys', array('ID', 'post_author', 'post_date', 'post_date_gmt'));
+    $optional_extra = apply_filters('geopost_import_optional_extra_keys', array());
 
     // Apply optional keys
     $post_keys = array_merge($post_keys, $optional_post);
     $meta_keys = array_merge($meta_keys, $optional_meta);
+    $extra_keys = array_merge($extra_keys, $optional_extra);
 
     // Parse keys from header
-    $key_indexes = array();
-    foreach($header as $index => $key)
-      $key_indexes[$key] = $index;
-
+    $key_indexes = array_flip($header);
 
     // Defer database counting to speed things up
     wp_defer_term_counting(true);
@@ -132,7 +131,7 @@ class GeoPostImport {
               break;
 
             default:
-              $post[$key] = apply_filters("geopost_import_post_data", $data[$key_indexes[$key]], $key, $data);
+              $post[$key] = apply_filters('geopost_import_post_data', $data[$key_indexes[$key]], $key, $data);
           }
         }
       }
@@ -141,6 +140,13 @@ class GeoPostImport {
       foreach($meta_keys as $key) {
         if ( isset($key_indexes[$key])) {
           $post['meta_input'][$key] = $data[$key_indexes[$key]];
+        }
+      }
+
+      // Allow for custom columns
+      foreach($extra_keys as $key) {
+        if ( isset($key_indexes[$key]) ) {
+          $post = apply_filters('geopost_import_extra_data', $post, $key, $data[$key_indexes[$key]]);
         }
       }
 
@@ -158,7 +164,7 @@ class GeoPostImport {
         // Request coordinates
         case ( $coordinates_included && $retrieve_condition = 'always' ):
         case ( !$coordinates_included && in_array($retrieve_condition, array('omitted', 'always')) ):
-          $coordinates = GeoPost::get_coordinates("{$data['street']} {$data['city']} {$data['state']} {$data['zip']}");
+          $coordinates = GeoPost::get_coordinates("{$post['meta_input']['street']} {$post['meta_input']['city']} {$post['meta_input']['state']} {$post['meta_input']['zip']}");
 
           if ( is_wp_error($coordinates) ) {
             return $coordinates;
@@ -175,6 +181,8 @@ class GeoPostImport {
       if ( is_wp_error($post_id) ) {
         return $post_id;
       }
+
+      do_action('geopost_import_post_inserted', $post_id, $post);
 
       $count++;
     }
