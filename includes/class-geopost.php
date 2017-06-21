@@ -11,67 +11,14 @@ class GeoPost{
     $plugin_file,
     $plugin_path;
 
-  private static function get_bounds_query($source, $bounds) {
-    global $wpdb;
-
-    $min_lat = $bounds['southwest']['latitude'];
-    $max_lat = $bounds['northeast']['latitude'];
-    $min_lng = $bounds['southwest']['longitude'];
-    $max_lng = $bounds['northeast']['longitude'];
-
-    return $wpdb->get_results($wpdb->prepare(
-    "SELECT DISTINCT
-      {$wpdb->posts}.*, lat.meta_value AS latitude, lng.meta_value AS longitude,
-      ( 3963.1676 * acos( cos( radians(%F) ) * cos( radians( lat.meta_value ) ) * cos( radians( lng.meta_value ) - radians(%F) ) + sin( radians(%F) ) * sin( radians( lat.meta_value ) ) ) ) AS distance
-
-      FROM {$wpdb->posts}
-        INNER JOIN
-          ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'latitude' ) as lat
-          ON {$wpdb->posts}.ID = lat.post_id
-        INNER JOIN
-          ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'longitude' ) as lng
-          ON {$wpdb->posts}.ID = lng.post_id
-
-      WHERE {$wpdb->posts}.post_type = %s AND
-        lat.meta_value >= %F AND
-        lat.meta_value <= %F AND
-        lng.meta_value >= %F AND
-        lng.meta_value <= %F
-
-      ORDER BY distance;",
-    $source->lat, $source->lng, $source->lat, self::POST_TYPE, $min_lat, $max_lat, $min_lng, $max_lng), 'OBJECT_K');
-  }
-
-  private static function get_radial_query($source, $distance) {
-    global $wpdb;
-
-    return $wpdb->get_results($wpdb->prepare(
-      "SELECT DISTINCT
-        {$wpdb->posts}.ID, lat.meta_value AS latitude, lng.meta_value AS longitude,
-        ( 3963.1676 * acos( cos( radians(%F) ) * cos( radians( lat.meta_value ) ) * cos( radians( lng.meta_value ) - radians(%F) ) + sin( radians(%F) ) * sin( radians( lat.meta_value ) ) ) ) AS distance
-
-      FROM {$wpdb->posts}
-        INNER JOIN
-          ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'latitude' ) as lat
-          ON {$wpdb->posts}.ID = lat.post_id
-        INNER JOIN
-          ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'longitude' ) as lng
-          ON {$wpdb->posts}.ID = lng.post_id
-
-      WHERE {$wpdb->posts}.post_type = %s
-
-      HAVING distance <= %F
-
-      ORDER BY distance;",
-    $source->lat, $source->lng, $source->lat, self::POST_TYPE, $distance), 'OBJECT_K');
-  }
-
   /**
-   * Uses the GeoPost query vars to limit the query within a radial or rectangular area
+   * Modifies the query clauses for location-based queries to perform geographical algorithms
+   * @param  array    $clauses
    * @param  WP_Query $query
+   * @return array    Modified clauses
    */
-  public static function pre_get_posts($query) {
-    if ( self::POST_TYPE !== $query->get('post_type') || !isset($query->query_vars['location']) ) return;
+  public static function posts_clauses($clauses, $query) {
+    if ( self::POST_TYPE !== $query->get('post_type') || !isset($query->query_vars['location']) ) return $clauses;
 
     // Get primary location cordinates
     $primary_location = $query->query_vars['location'];
@@ -91,54 +38,54 @@ class GeoPost{
       trigger_error("Invalid primary_location in GeoPost query: {$query->query_vars['primary_location']}", E_USER_ERROR);
     }
 
+    global $wpdb;
+
+    $clauses['fields'] .= $wpdb->prepare(
+      ",lat.meta_value AS latitude, lng.meta_value AS longitude,
+      ( 3963.1676 * acos( cos( radians(%F) ) * cos( radians( lat.meta_value ) ) * cos( radians( lng.meta_value ) - radians(%F) ) + sin( radians(%F) ) * sin( radians( lat.meta_value ) ) ) ) AS distance
+      ", $primary_location->lat, $primary_location->lng, $primary_location->lat);
+
+    $clauses['join'] .= "
+      INNER JOIN
+        ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'latitude' ) as lat
+        ON {$wpdb->posts}.ID = lat.post_id
+      INNER JOIN
+        ( SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = 'longitude' ) as lng
+        ON {$wpdb->posts}.ID = lng.post_id
+    ";
+
+    $clauses['orderby'] = 'distance ASC';
+
+    $clauses['distinct'] = 'DISTINCT';
+
     if ( isset($query->query_vars['distance']) ) {
       // Radial Query
-      $posts_to_include = self::get_radial_query($primary_location, $query->query_vars['distance']);
+      $clauses['groupby'] .= $wpdb->prepare(" $wpdb->posts.ID HAVING distance <= %F", (float) $query->query_vars['distance']);
 
     } else if ( isset($query->query_vars['bounds']) ) {
+      $min_lat = $bounds['southwest']['latitude'];
+      $max_lat = $bounds['northeast']['latitude'];
+      $min_lng = $bounds['southwest']['longitude'];
+      $max_lng = $bounds['northeast']['longitude'];
       // Bounds Query
-      $posts_to_include = self::get_bounds_query($primary_location, $query->query_vars['bounds']);
+      $clauses['where'] .= $wpdb->prepare("
+        AND lat.meta_value >= %F
+        AND lat.meta_value <= %F
+        AND lng.meta_value >= %F
+        AND lng.meta_value <= %F
+      ", $min_lat, $max_lat, $min_lng, $max_lng);
 
     } else {
-      return;
+      trigger_error('Invalid geoposts query. Either distance of bounds are required.', E_USER_WARNING);
     }
 
-    if ( is_array($posts_to_include) ) {
-      // Limit the final query to the ids of the retrieved posts
-      $posts_in = $query->get('post__in');
-      $posts_in = empty($posts_in) ? array_keys($posts_to_include) : array_intersect($posts_in, array_keys($posts_to_include));
-      $query->set('post__in', empty($posts_in) ? array(-1) : $posts_in);
-
-      // Pass the results to the query to be later applied to the results
-      $query->set('geoposts', $posts_to_include);
-
-    } else {
-      // SQL Error occurred
-      trigger_error("There was a SQL error returned in the GeoPost query: {$posts_to_include}");
-    }
+    return $clauses;
   }
 
   /**
-   * Adds the latitude, longitude, and distance data to GeoPost query results
-   * @param  array    $posts
-   * @param  WP_Query $query
-   * @return array            collection of posts with data added
+   * Sets up the main properties and hooks
+   * @param  string   $plugin_file  path to the plugin
    */
-  public static function the_posts($posts, $query) {
-    $geoposts = $query->get('geoposts');
-    if ( empty($geoposts) ) return $posts;
-
-    foreach($posts as &$post) {
-      if ( isset($geoposts[$post->ID]) ) {
-        $post->latitude   = $geoposts[$post->ID]->latitude;
-        $post->longitude  = $geoposts[$post->ID]->longitude;
-        $post->distance   = $geoposts[$post->ID]->distance;
-      }
-    }
-
-    return $posts;
-  }
-
   public static function load($plugin_file) {
     self::$plugin_file = $plugin_file;
     self::$plugin_path = plugin_dir_path($plugin_file);
@@ -146,8 +93,7 @@ class GeoPost{
     self::autoload_classes();
 
     // Extend posts queries to support geographical parameters
-    add_action('pre_get_posts', array(__CLASS__, 'pre_get_posts'));
-    add_filter('the_posts', array(__CLASS__, 'the_posts'), 10, 2);
+    add_filter('posts_clauses', array(__CLASS__, 'posts_clauses'), PHP_INT_MAX, 20);
 
     // Retrieve coordinates on post save/update
     add_action('save_post', array(__CLASS__, 'intercept_post_save'));
@@ -156,6 +102,9 @@ class GeoPost{
     add_action('admin_head-post.php', array(__CLASS__, 'check_admin_notice'));
   }
 
+  /**
+   * Autoloads the rest of the plugin classes
+   */
   public static function autoload_classes() {
     $files = glob( self::$plugin_path . 'includes/*.php' );
     foreach($files as $index => $file) {
@@ -170,11 +119,19 @@ class GeoPost{
     }
   }
 
+  /**
+   * Provides hook to display admin notices
+   */
   public static function check_admin_notice() {
     if ( get_option('geopost_admin_notice') )
       add_action('admin_notices', array(__CLASS__, 'update_notice'));
   }
 
+  /**
+   * Returns the latitude and longitude coordintaes for a given address
+   * @param  string $address Address to lookup
+   * @return object          Object with the lat and lng coordinates
+   */
   public static function get_coordinates($address) {
     $settings = self::get_settings();
     $address = urlencode($address);
@@ -206,12 +163,19 @@ class GeoPost{
     }
   }
 
+  /**
+   * Renders the admin notice
+   */
   public static function update_notice() {
     $notice = get_option('geopost_admin_notice');
     echo "<div class='error'><p>$notice</p></div>";
     update_option('geopost_admin_notice', 0);
   }
 
+  /**
+   * Retrieves the coordinates for the post being saved
+   * @param  integer $post_id
+   */
   public static function intercept_post_save( $post_id ) {
     if ( false !== wp_is_post_revision($post_id) || false !== wp_is_post_autosave($post_id) ) return;
 
@@ -244,6 +208,10 @@ class GeoPost{
     $has_retrieved = true;
   }
 
+  /**
+   * Retrieves the plugin settings
+   * @return array
+   */
   public static function get_settings() {
     if ( isset(self::$_settings) ) return self::$_settings;
 
