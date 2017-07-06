@@ -31,6 +31,26 @@ class GeoPostImport {
     ));
   }
 
+  public static function get_keys($type, $required = true) {
+    switch(strtolower($type)) {
+      case 'post':
+        $keys = $required
+          ? array('post_title')
+          : array('ID', 'post_name', 'post_status', 'post_author', 'post_date', 'post_date_gmt');
+        break;
+
+      case 'meta':
+        $keys = $required ? array('street', 'city', 'state', 'zip') : array();
+        break;
+
+      case 'extra':
+        $keys = array();
+    }
+
+    $required = $required ? 'required' : 'optional';
+    return apply_filters("geopost_import_{$required}_{$type}_keys", $keys);
+  }
+
   public static function pre_update_option($settings, $new, $old) {
     // Return if not import tab
     if ( !isset($new['import_file']) ) return $settings;
@@ -68,8 +88,8 @@ class GeoPostImport {
 
     // Finalize or rollback transaction
     if ( is_wp_error($count) ) {
-      self::set_notification('error', "Error: {$count->get_error_message()}");
       self::rollback_transaction();
+      self::set_notification('error', "Error: {$count->get_error_message()}");
     } else {
       self::set_notification('updated', "$count Posts successfully imported");
       self::commit_transaction();
@@ -80,20 +100,20 @@ class GeoPostImport {
 
   private static function import_post_from_data($contents, $header, $options) {
     // Requirements
-    $post_keys    = apply_filters('geopost_import_required_post_keys', array('post_name', 'post_title', 'post_status'));
-    $meta_keys    = apply_filters('geopost_import_required_meta_keys', array('street', 'city', 'state', 'zip'));
-    $extra_keys   = apply_filters('geopost_import_required_extra_keys', array());
+    $post_keys  = self::get_keys('post', true);
+    $meta_keys  = self::get_keys('meta', true);
+    $extra_keys = self::get_keys('extra', true);
 
     // Check Required Keys
     $missing_keys = array_diff(array_merge($post_keys, $meta_keys, $extra_keys), $header);
     if ( !empty($missing_keys) ) {
-      return new WP_Error ('import_error', 'The following required columns were missing: ' . explode(', ', $missing_keys));
+      return new WP_Error ('import_error', 'The following required columns were missing: ' . implode(', ', $missing_keys));
     }
 
     // Gather optional keys
-    $optional_meta = apply_filters('geopost_import_optional_meta_keys', array());
-    $optional_post = apply_filters('geopost_import_optional_post_keys', array('ID', 'post_author', 'post_date', 'post_date_gmt'));
-    $optional_extra = apply_filters('geopost_import_optional_extra_keys', array());
+    $optional_post  = self::get_keys('post', false);
+    $optional_meta  = self::get_keys('meta', false);
+    $optional_extra = self::get_keys('extra', false);
 
     // Apply optional keys
     $post_keys = array_merge($post_keys, $optional_post);
@@ -112,6 +132,7 @@ class GeoPostImport {
       // Prepare post
       $post = array(
         'post_type'   => GeoPost::POST_TYPE,
+        'post_status' => 'publish',
         'meta_input'  => array()
       );
 
