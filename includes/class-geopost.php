@@ -157,7 +157,7 @@ class GeoPost{
         return $contents->results[0]->geometry->location;
       case 'REQUEST_DENIED':
         if ( $settings['use-key'] )
-          return new WP_Error('Error', __('API Key Failed'));
+          return new WP_Error('Error', __('API Key was denied'));
         else
           return new WP_Error('Error', __('Usage limit exceeded'));
     }
