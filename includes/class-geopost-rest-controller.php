@@ -1,5 +1,10 @@
 <?php
 class GeoPostRestController extends WP_REST_Posts_Controller {
+  /**
+   * Overrides the parent get_items function to add properties to the post before being sent out
+   * @param  WP_REST_Request $request request object about to get sent out
+   * @return WP_REST_Request
+   */
   public function get_items($request) {
     add_filter('rest_' . GeoPost::POST_TYPE . '_query', array($this, 'rest_query'), 10, 2);
 
@@ -30,12 +35,18 @@ class GeoPostRestController extends WP_REST_Posts_Controller {
     return apply_filters('geopost_rest_get_items_response', $response, $request);
   }
 
+  /**
+   * Filters the rest query for this post type to add support for location parameters
+   * @param  array            $vars    wp_query arguments
+   * @param  WP_REST_Request  $request corresponding request object
+   * @return array            arguments with the added parameters, when applicable
+   */
   public function rest_query($vars, $request) {
     if ( isset($request['location']) ) {
-      $vars['location'] = array(
+      $vars['location'] = is_array($request['location']) ? array(
         'latitude'  => $request['location'][0],
         'longitude' => $request['location'][1],
-      );
+      ) : $request['location'];
     }
 
     if ( isset($request['distance']) ) {
@@ -98,7 +109,7 @@ class GeoPostRestController extends WP_REST_Posts_Controller {
 
     $query_parms['location'] = array(
       'description' => __('The central location all posts are measured against. Format is: latitude, longitude'),
-      'type'        => 'array',
+      'type'        => array('array', 'string'),
       'items'  => array(
         'type'      => 'number'
       )
