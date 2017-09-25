@@ -24,12 +24,14 @@ class GeoPostRestController extends WP_REST_Posts_Controller {
         'city'   => get_post_meta($post['id'], 'city', true),
         'state'  => get_post_meta($post['id'], 'state', true),
         'zip'    => get_post_meta($post['id'], 'zip', true),
+        'country'=> get_post_meta($post['id'], 'country', true)
       );
 
       $post['address']['full'] = $post['address']['street'];
       if ( $post['address']['city'] ) $post['address']['full'] .= ", {$post['address']['city']}";
       if ( $post['address']['state'] ) $post['address']['full'] .= " {$post['address']['state']}";
       if ( $post['address']['zip'] ) $post['address']['full'] .= " {$post['address']['zip']}";
+      if ( $post['address']['country'] ) $post['address']['full'] .= ", {$post['address']['country']}";
     }
 
     return apply_filters('geopost_rest_get_items_response', $response, $request);

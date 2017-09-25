@@ -35,7 +35,7 @@ class GeoPostExport {
     $keys = apply_filters('geopost_export_post_keys', $keys);
 
     // Define and filter meta keys
-    $meta_keys = array('latitude', 'longitude', 'street', 'city', 'state', 'zip');
+    $meta_keys = array('latitude', 'longitude', 'street', 'city', 'state', 'zip', 'country');
     $meta_keys = ( $all_meta ) ? $meta_keys = apply_filters('geopost_export_meta_keys', $meta_keys) : $meta_keys;
 
     $extra_keys = apply_filters('geopost_export_extra_keys', array());

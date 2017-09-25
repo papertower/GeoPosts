@@ -40,7 +40,7 @@ class GeoPostImport {
         break;
 
       case 'meta':
-        $keys = $required ? array('street', 'city', 'state', 'zip') : array();
+        $keys = $required ? array('street', 'city', 'state', 'zip', 'country') : array();
         break;
 
       case 'extra':

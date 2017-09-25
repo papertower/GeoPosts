@@ -192,6 +192,7 @@ class GeoPost{
       $_POST['_post_meta']['city'],
       $_POST['_post_meta']['state'],
       isset($_POST['_post_meta']['zip']) ? $_POST['_post_meta']['zip'] : '',
+      isset($_POST['_post_meta']['country']) ? $_POST['_post_meta']['country'] : ''
     ));
 
     // GET Coordinates from Google GeoCode
