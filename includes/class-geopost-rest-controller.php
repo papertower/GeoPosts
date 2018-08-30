@@ -13,6 +13,7 @@ class GeoPostRestController extends WP_REST_Posts_Controller
     {
         add_filter('rest_' . GeoPost::POST_TYPE . '_query', [$this, 'rest_query'], 10, 2);
 
+        do_action('geopost_rest_before_get_items');
         $response = parent::get_items($request);
 
         foreach ($response->data as &$post) {
@@ -46,6 +47,8 @@ class GeoPostRestController extends WP_REST_Posts_Controller
                 $post['address']['full'] .= ", {$post['address']['country']}";
             }
         }
+
+        do_action('geopost_rest_after_get_items');
 
         return apply_filters('geopost_rest_get_items_response', $response, $request);
     }
