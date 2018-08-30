@@ -34,14 +34,39 @@ piklist('field', [
     ]
 ]);
 
-piklist('field', [
-    'type'  => 'text',
-    'field' => 'title',
-    'label' => 'Post Title',
-]);
+$settings = GeoPost::get_settings();
+$has_settings = ( false !== $settings );
 
-piklist('field', [
-    'type'  => 'text',
-    'field' => 'slug',
-    'label' => 'Post Slug',
-]);
+$title  = ($has_settings && isset($settings['title'])) ? $settings['title'] : 'GeoPost';
+$slug   = ($has_settings && isset($settings['slug'])) ? $settings['slug'] : 'geopost';
+
+$arguments = GeoPostModel::get_post_arguments();
+
+if ( $arguments['title'] === $title ) {
+    piklist('field', array(
+        'type'    => 'text',
+        'field'   => 'title',
+        'label'   => 'Post Title',
+    ));
+} else {
+    piklist('field', array(
+        'type'    => 'html',
+        'label'   => 'Post Title',
+        'value'   => 'Title is set by the theme or another plugin'
+    ));
+}
+
+if ( $arguments['rewrite']['slug'] === $slug ) {
+    piklist('field', array(
+        'type'    => 'text',
+        'field'   => 'slug',
+        'label'   => 'Post Slug',
+    ));
+} else {
+    piklist('field', array(
+        'type'    => 'html',
+        'label'   => 'Post Slug',
+        'value' => 'Slug is set by the theme or another plugin'
+    ));
+}
+

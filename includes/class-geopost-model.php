@@ -10,15 +10,22 @@ class GeoPostModel
 
     public static function add_post_type($post_types)
     {
+        $post_types[GeoPost::POST_TYPE] = self::get_post_arguments();
+
+        return $post_types;
+    }
+
+    public static function get_post_arguments()
+    {
         $settings     = GeoPost::get_settings();
         $has_settings = (false !== $settings);
 
         $title = ($has_settings && isset($settings['title'])) ? $settings['title'] : 'GeoPost';
         $slug  = ($has_settings && isset($settings['slug'])) ? $settings['slug'] : 'geopost';
 
-        $post_types[GeoPost::POST_TYPE] = apply_filters('geopost_post_data', [
-            'labels'                => piklist('post_type_labels', $title),
+        return apply_filters('geopost_post_data', [
             'title'                 => $title,
+            'labels'                => piklist('post_type_labels', $title),
             'supports'              => ['title'],
             'public'                => true,
             'has_archive'           => true,
@@ -28,7 +35,5 @@ class GeoPostModel
             'show_in_rest'          => true,
             'rest_controller_class' => 'GeoPostRestController'
         ]);
-
-        return $post_types;
     }
 }
