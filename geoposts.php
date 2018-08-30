@@ -13,17 +13,18 @@ Author URI: http://papertower.com
 add_action('init', 'geo_initialize_plugin');
 function geo_initialize_plugin()
 {
-  // Check for Piklist
-  if(is_admin()) {
-    include_once('includes/class-piklist-checker.php');
+    // Check for Piklist
+    if (is_admin()) {
+        include_once('includes/class-piklist-checker.php');
 
-    if (!piklist_checker::check(__FILE__))
-      return;
-  }
+        if ( ! piklist_checker::check(__FILE__)) {
+            return;
+        }
+    }
 }
 
-if ( !class_exists('GeoPost') ) {
-  require_once('includes/class-geopost.php');
+if ( ! class_exists('GeoPost')) {
+    require_once('includes/class-geopost.php');
 
-  GeoPost::load(__FILE__);
+    GeoPost::load(__FILE__);
 }

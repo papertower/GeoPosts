@@ -6,8 +6,11 @@
  * Flow: Settings Workflow
  */
 
-$required_columns = implode(', ', array_merge(GeoPostImport::get_keys('post'), GeoPostImport::get_keys('meta'), GeoPostImport::get_keys('extra')));
-$optional_columns = implode(', ', array_merge(GeoPostImport::get_keys('post', false), GeoPostImport::get_keys('meta', false), GeoPostImport::get_keys('extra', false)));
+$required_columns = implode(', ',
+    array_merge(GeoPostImport::get_keys('post'), GeoPostImport::get_keys('meta'), GeoPostImport::get_keys('extra')));
+$optional_columns = implode(', ',
+    array_merge(GeoPostImport::get_keys('post', false), GeoPostImport::get_keys('meta', false),
+        GeoPostImport::get_keys('extra', false)));
 
 echo <<<HTML
 <style>
@@ -42,41 +45,41 @@ echo <<<HTML
 </div>
 HTML;
 
-piklist('field', array(
-  'type'    => 'file',
-  'field'   => 'import_file',
-  'label'   => 'File',
-  'options' => array(
-    'basic'   => true
-  )
-));
+piklist('field', [
+    'type'    => 'file',
+    'field'   => 'import_file',
+    'label'   => 'File',
+    'options' => [
+        'basic' => true
+    ]
+]);
 
-piklist('field', array(
-  'help'    => 'When to retrieve the latitude and longitude coordintes for the posts.',
-  'type'    => 'radio',
-  'field'   => 'retrieve_coordinates',
-  'label'   => 'Retrieve Coordinates',
-  'value'   => 'omitted',
-  'choices' => array(
-    'never'   => 'Do not retrieve any',
-    'omitted' => 'Only if omitted',
-    'always'  => 'For all of them'
-  )
-));
+piklist('field', [
+    'help'    => 'When to retrieve the latitude and longitude coordintes for the posts.',
+    'type'    => 'radio',
+    'field'   => 'retrieve_coordinates',
+    'label'   => 'Retrieve Coordinates',
+    'value'   => 'omitted',
+    'choices' => [
+        'never'   => 'Do not retrieve any',
+        'omitted' => 'Only if omitted',
+        'always'  => 'For all of them'
+    ]
+]);
 
 ?>
 
 <script type='text/javascript'>
-(function($) {
-  $(document).ready(function() {
-    // Get submit button
-    $submit = $('#submit');
+    (function ($) {
+        $(document).ready(function () {
+            // Get submit button
+            $submit = $('#submit');
 
-    // Change submit title
-    $submit.val('Import');
+            // Change submit title
+            $submit.val('Import');
 
-    // Remove 'Settings Saved' Message
-    $('#setting-error-settings_updated').remove();
-  })
-})(jQuery);
+            // Remove 'Settings Saved' Message
+            $('#setting-error-settings_updated').remove();
+        })
+    })(jQuery);
 </script>

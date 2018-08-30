@@ -6,86 +6,86 @@
  * Priority: high
  */
 
-piklist('field', array(
-  'type'    => 'group',
-  'label'   => 'Address',
-  'list'    => false,
-  'fields'  => array(
-    array(
-      'type'      => 'text',
-      'field'     => 'street',
-      'label'     => 'Street Address',
-      'columns'   => 12,
-      'sanitize'  => array(
-        array(
-          'type'    => 'text_field'
-        )
-      )
-    ),
-    array(
-      'type'      => 'text',
-      'field'     => 'city',
-      'label'     => 'City',
-      'columns'   => 4,
-      'sanitize'  => array(
-        array(
-          'type'    => 'text_field'
-        )
-      )
-    ),
-    array(
-      'type'      => 'text',
-      'field'     => 'state',
-      'label'     => 'State / Region',
-      'columns'   => 2,
-      'sanitize'  => array(
-        array(
-          'type'    => 'text_field'
-        )
-      )
-    ),
-    array(
-      'type'      => 'text',
-      'field'     => 'zip',
-      'label'     => 'Zip Code',
-      'columns'   => 3,
-      'sanitize'  => array(
-        array(
-          'type'    => 'text_field'
-        )
-      )
-    ),
-    array(
-      'type'      => 'text',
-      'field'     => 'country',
-      'label'     => 'Country',
-      'columns'   => 3,
-      'sanitize'  => array(
-        array(
-          'type'    => 'text_field'
-        )
-      )
-    ),
-  )
-));
+piklist('field', [
+    'type'   => 'group',
+    'label'  => 'Address',
+    'list'   => false,
+    'fields' => [
+        [
+            'type'     => 'text',
+            'field'    => 'street',
+            'label'    => 'Street Address',
+            'columns'  => 12,
+            'sanitize' => [
+                [
+                    'type' => 'text_field'
+                ]
+            ]
+        ],
+        [
+            'type'     => 'text',
+            'field'    => 'city',
+            'label'    => 'City',
+            'columns'  => 4,
+            'sanitize' => [
+                [
+                    'type' => 'text_field'
+                ]
+            ]
+        ],
+        [
+            'type'     => 'text',
+            'field'    => 'state',
+            'label'    => 'State / Region',
+            'columns'  => 2,
+            'sanitize' => [
+                [
+                    'type' => 'text_field'
+                ]
+            ]
+        ],
+        [
+            'type'     => 'text',
+            'field'    => 'zip',
+            'label'    => 'Zip Code',
+            'columns'  => 3,
+            'sanitize' => [
+                [
+                    'type' => 'text_field'
+                ]
+            ]
+        ],
+        [
+            'type'     => 'text',
+            'field'    => 'country',
+            'label'    => 'Country',
+            'columns'  => 3,
+            'sanitize' => [
+                [
+                    'type' => 'text_field'
+                ]
+            ]
+        ],
+    ]
+]);
 
-piklist('field', array(
-  'type'    => 'group',
-  'label'   => 'Coordinates',
-  'fields'  => array(
-    array(
-      'type'        => 'text',
-      'field'       => 'latitude',
-      'label'       => 'Latitude',
-      'display'     => true,
-      'columns'     => 3,
-    ),
-    array(
-      'type'        => 'text',
-      'field'       => 'longitude',
-      'label'       => 'Longitude',
-      'display'     => true,
-      'columns'     => 3,
-    )
-  )
-));
+piklist('field', [
+    'type'   => 'group',
+    'label'  => 'Coordinates',
+    'fields' => [
+        [
+            'type'    => 'text',
+            'field'   => 'latitude',
+            'label'   => 'Latitude',
+            'display' => true,
+            'columns' => 3,
+        ],
+        [
+            'type'    => 'text',
+            'field'   => 'longitude',
+            'label'   => 'Longitude',
+            'display' => true,
+            'columns' => 3,
+        ]
+    ]
+]);
