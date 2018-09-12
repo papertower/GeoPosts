@@ -122,10 +122,10 @@ class GeoPost
         $files = glob(self::$plugin_path . 'includes/*.php');
         foreach ($files as $index => $file) {
             if (strpos($file, 'class-geopost-') !== false) {
-                include_once($file);
+                include_once $file;
 
-                $parts      = explode('-', basename($file, '.php'));
-                $class_name = 'GeoPost' . ucfirst($parts[2]);
+                $basename = basename($file, '.php');
+                $class_name = 'GeoPost' . str_replace('-', '', ucwords(substr($basename, strlen('class-geopost-')), '-'));
                 if (class_exists($class_name) && method_exists($class_name, 'load')) {
                     call_user_func([$class_name, 'load']);
                 }
